@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rotation CAPTCHA Demo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 50px;
+    }
+    #captchaContainer {
+      position: relative;
+      display: inline-block;
+      margin-right: 50px;
+    }
+    #captchaImage {
+      width: 200px;
+      height: 200px;
+      border: 2px solid #000;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease;
+      object-fit: cover;
+    }
+    #arrowContainer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    #arrowIndicator {
+      font-size: 48px;
+      transform-origin: center;
+      transition: transform 0.3s ease;
+      margin-left: 20px;
+    }
+    #arrowLabel {
+      font-size: 18px;
+    }
+    #noiseOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(45deg, rgba(0,0,0,0.1), rgba(0,0,0,0.1) 5px, rgba(255,255,255,0.1) 5px, rgba(255,255,255,0.1) 10px);
+      pointer-events: none;
+    }
+    input[type="range"] {
+      width: 250px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #initialArrow {
+      font-size: 24px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      margin-left: 30px;
+    }
+    #initialArrow span {
+      font-size: 48px;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Rotation CAPTCHA Demo</h1>
+  <div style="display: flex; align-items: center;">
+    <div id="captchaContainer">
+      <img id="captchaImage" src="" alt="CAPTCHA Image">
+      <div id="noiseOverlay"></div>
+    </div>
+    <div id="initialArrow"><span>⬆️</span> Initial Orientation</div>
+  </div>
+  <div id="arrowContainer">
+    <div id="arrowLabel">Target Orientation:</div>
+    <div id="arrowIndicator">⬆️</div>
+  </div>
+  <input type="range" id="rotationSlider" min="0" max="360" value="0">
+  <button id="verifyButton" onclick="verifyCaptcha()">Verify</button>
+  <button id="refreshButton" onclick="generateCaptcha()">Refresh CAPTCHA</button>
+
+  <p id="result"></p>
+
+  <script>
+    let targetAngle, imageRotation;
+    let attemptsLeft = 3;
+    const images = [
+      "https://upload.wikimedia.org/wikipedia/commons/a/a3/June_odd-eyed-cat.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/3/3a/Cat03.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/1/15/Red_Apple.jpg"
+    ];
+
+    function generateCaptcha() {
+      const img = document.getElementById("captchaImage");
+      const slider = document.getElementById("rotationSlider");
+      const arrow = document.getElementById("arrowIndicator");
+      const initialArrow = document.getElementById("initialArrow");
+
+      const randomImage = images[Math.floor(Math.random() * images.length)];
+      img.src = randomImage;
+
+      img.style.transform = `rotate(0deg)`;
+      initialArrow.style.display = "flex";
+      arrow.style.display = "none";
+
+      targetAngle = Math.floor(Math.random() * 360);
+      imageRotation = Math.floor(Math.random() * 360);
+
+      setTimeout(() => {
+        img.style.transform = `rotate(${imageRotation}deg)`;
+        arrow.style.transform = `rotate(${targetAngle}deg)`;
+
+        initialArrow.style.display = "none";
+        arrow.style.display = "block";
+      }, 2000);
+
+      slider.value = 0;
+      if (attemptsLeft === 3) {
+        document.getElementById("result").textContent = "";
+      }
+      document.getElementById("captchaContainer").style.display = "inline-block";
+      document.getElementById("verifyButton").style.display = "inline-block";
+      document.getElementById("refreshButton").style.display = "inline-block";
+      slider.style.display = "inline-block";
+    }
+
+    document.getElementById("rotationSlider").addEventListener("input", function() {
+      const img = document.getElementById("captchaImage");
+      const rotation = (imageRotation + parseInt(this.value)) % 360;
+      img.style.transform = `rotate(${rotation}deg)`;
+    });
+
+    document.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        verifyCaptcha();
+      }
+    });
+
+    function verifyCaptcha() {
+      if (attemptsLeft <= 0) return;
+
+      const sliderValue = parseInt(document.getElementById("rotationSlider").value);
+      const currentRotation = (imageRotation + sliderValue) % 360;
+      const deviation = Math.min(Math.abs(currentRotation - targetAngle), 360 - Math.abs(currentRotation - targetAngle));
+      const resultElement = document.getElementById("result");
+      const slider = document.getElementById("rotationSlider");
+
+      if (deviation <= 10) {
+        resultElement.textContent = "✅ You're not a robot!";
+        resultElement.style.color = "green";
+        document.getElementById("captchaContainer").style.display = "none";
+        document.getElementById("verifyButton").style.display = "none";
+        document.getElementById("refreshButton").style.display = "none";
+        slider.style.display = "none";
+        attemptsLeft = 0;
+      } else {
+        attemptsLeft--;
+        if (attemptsLeft > 0) {
+          resultElement.textContent = `❌ Try Again! Attempts left: ${attemptsLeft}`;
+          resultElement.style.color = "red";
+          setTimeout(generateCaptcha, 1000);
+        } else {
+          resultElement.textContent = "❌ You're a robot! No attempts left.";
+          resultElement.style.color = "red";
+          document.getElementById("captchaContainer").style.display = "none";
+          document.getElementById("verifyButton").style.display = "none";
+          document.getElementById("refreshButton").style.display = "none";
+          slider.style.display = "none";
+        }
+      }
+    }
+
+    window.onload = generateCaptcha;
+  </script>
+</body>
+</html>
